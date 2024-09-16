@@ -24,7 +24,7 @@ class Song:
         self.url = url
 
     def __str__(self):
-        return f"{self.url}  # {self.artist} - {self.title}"
+        return f"# {self.artist} - {self.title}\n{self.url}"
 
 
 def get_album_songs(album_url: str):
