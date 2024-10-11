@@ -27,11 +27,14 @@ class Song:
         return f"# {self.artist} - {self.title}\n{self.url}"
 
 
-def get_album_songs(album_url: str):
+def fetch_page(album_url: str):
     # get the album page
     req = Request(album_url)
-    response = urlopen(req).read().decode("utf-8")
+    response = urlopen(req).read().decode("utf-8")  
+    return response
 
+def get_songs(album_url: str):
+    response = fetch_page(album_url)
     parser = AlbumDataParser()
     parser.feed(response)
 
@@ -59,4 +62,4 @@ if __name__ == "__main__":
     else:
         url = sys.argv[1]
 
-    print(get_album_songs(url))
+    print(get_songs(url))
