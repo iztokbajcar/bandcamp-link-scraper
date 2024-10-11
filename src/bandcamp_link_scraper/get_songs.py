@@ -53,7 +53,7 @@ def get_songs(album_url: str):
         songs.append(Song(track_artist, track_title, track_url))
 
     album_playlist = "\n".join([str(song) for song in songs])
-    return album_playlist
+    return f"{album_playlist}\n"
 
 
 if __name__ == "__main__":
