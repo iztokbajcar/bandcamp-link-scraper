@@ -18,7 +18,7 @@ class AlbumDataParser(HTMLParser):
 
 
 class Song:
-    def __init__(self, artist, title, url):
+    def __init__(self, artist: str, title: str, url: str):
         self.artist = artist
         self.title = title
         self.url = url
@@ -33,7 +33,8 @@ def fetch_page(album_url: str):
     response = urlopen(req).read().decode("utf-8")  
     return response
 
-def get_songs(album_url: str):
+
+def get_songs(album_url: str, parse_fun: object):
     response = fetch_page(album_url)
     parser = AlbumDataParser()
     parser.feed(response)
@@ -52,7 +53,7 @@ def get_songs(album_url: str):
 
         songs.append(Song(track_artist, track_title, track_url))
 
-    album_playlist = "\n".join([str(song) for song in songs])
+    album_playlist = parse_fun(songs)
     return f"{album_playlist}\n"
 
 
