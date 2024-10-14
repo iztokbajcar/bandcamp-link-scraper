@@ -12,7 +12,8 @@ def parse_to_annotated_m3u8(songs: list[Song]):
     def annotate_song(song: Song):
         sanitized_artist = str(song.artist).replace('"', '\\"')
         sanitized_title = str(song.title).replace('"', '\\"')
-        return f"annotate:artist=\"{sanitized_artist}\",title=\"{sanitized_title}\":{song.url}"
+        sanitized_album = str(song.album).replace('"', '\\"')
+        return f"annotate:artist=\"{sanitized_artist}\",title=\"{sanitized_title}\",album=\"{sanitized_album}\":{song.url}"
 
     annotated = list(map(annotate_song, songs))
     return "\n".join(annotated)

@@ -42,11 +42,12 @@ class AlbumDataParser(HTMLParser):
             self.reading_artist = False
 
 class Song:
-    def __init__(self, artist: str, title: str, url: str):
+    def __init__(self, artist: str, title: str, album: str, url: str):
         self.artist = artist
         self.title = title
+        self.album = album
         self.url = url
-        print(f"song: {self.artist}, {self.title}")
+        print(f"song: {self.artist}, {self.title} | {self.album}")
 
     def __str__(self):
         return f"# {self.artist} - {self.title}\n{self.url}"
@@ -73,10 +74,12 @@ def get_songs(album_url: str, parse_fun: object):
     # this is useful for albums that are published by records, where
     # the song artist metadata doesn't actually represent the real artist
     page_artist = None
+    album = None
     if " - " in parser.title:
-        page_artist = parser.title.split(" - ")[0]
+        page_artist, album = parser.title.split(" - ")[:2]
     else:
         page_artist = parser.artist
+        album = parser.title
 
     for d in parser.data["trackinfo"]:
         track_artist = d["artist"]
@@ -89,7 +92,7 @@ def get_songs(album_url: str, parse_fun: object):
         track_title = d["title"]
         track_url = d["file"]["mp3-128"]
 
-        songs.append(Song(track_artist, track_title, track_url))
+        songs.append(Song(track_artist, track_title, album, track_url))
 
     album_playlist = parse_fun(songs)
     return f"{album_playlist}\n"
