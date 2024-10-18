@@ -55,13 +55,23 @@ class Song:
 
 def fetch_page(album_url: str):
     # get the album page
-    req = Request(album_url)
-    response = urlopen(req).read().decode("utf-8")  
-    return response
+    try:
+        req = Request(album_url)
+        response = urlopen(req).read().decode("utf-8")  
+        return response
+    except Exception as e:
+        # fetching failed, return an empty string
+        # TODO log the error somewhere
+        return ""
 
 
 def get_songs(album_url: str, parse_fun: object):
     response = fetch_page(album_url)
+
+    # if the fetching failed, return an empty string
+    if len(response) == 0:
+        return ""
+
     parser = AlbumDataParser()
     parser.feed(response)
 
