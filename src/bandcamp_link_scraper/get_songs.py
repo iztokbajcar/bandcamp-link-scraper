@@ -9,6 +9,7 @@ class AlbumDataParser(HTMLParser):
         super().__init__()
         self.data = {}
         self.passed_h3 = False
+        self.passed_album_by = False
         self.reading_title = False
         self.reading_artist = False
         self.title = None
@@ -20,21 +21,28 @@ class AlbumDataParser(HTMLParser):
                 if attr == "data-tralbum":
                     self.data = json.loads(value)
                     break
+
         if tag == "h2" and self.title is None:
             for attr, value in attrs:
                 if attr == "class" and value == "trackTitle":
                     self.reading_title = True
+
         if tag == "h3" and self.artist is None:
             self.passed_h3 = True
 
         if tag == "a" and self.artist is None and self.passed_h3:
-            self.reading_artist = True
+            if self.passed_album_by:
+                self.reading_artist = True
 
     def handle_data(self, data):
         if self.reading_title:
             self.title = data.strip()
             print(f"'{self.title}'")
             self.reading_title = False
+
+        if self.passed_h3 and self.artist is None and not self.passed_album_by:
+            if "by" in data:
+                self.passed_album_by = True
 
         if self.reading_artist:
             self.artist = data.strip()
