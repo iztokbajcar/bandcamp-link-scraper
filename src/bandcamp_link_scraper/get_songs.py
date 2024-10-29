@@ -51,11 +51,12 @@ class AlbumDataParser(HTMLParser):
 
 
 class Song:
-    def __init__(self, artist: str, title: str, album: str, url: str):
+    def __init__(self, artist: str, title: str, album: str, url: str, duration: float):
         self.artist = artist
         self.title = title
         self.album = album
         self.url = url
+        self.duration = duration
         print(f"song: {self.artist}, {self.title} | {self.album}")
 
     def __str__(self):
@@ -109,6 +110,7 @@ def get_songs(album_url: str, parse_fun: object):
                 track_artist = page_artist
 
         track_title = d["title"]
+        track_duration = d["duration"]
 
         # handle the case where the song is not playable
         # (skip it if it has no file link)
@@ -120,7 +122,7 @@ def get_songs(album_url: str, parse_fun: object):
 
         track_url = d["file"]["mp3-128"]
 
-        songs.append(Song(track_artist, track_title, album, track_url))
+        songs.append(Song(track_artist, track_title, album, track_url, track_duration))
 
     album_playlist = parse_fun(songs)
     return f"{album_playlist}\n"
