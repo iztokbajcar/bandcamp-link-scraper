@@ -49,6 +49,7 @@ class AlbumDataParser(HTMLParser):
             print(f"'{self.artist}'")
             self.reading_artist = False
 
+
 class Song:
     def __init__(self, artist: str, title: str, album: str, url: str):
         self.artist = artist
@@ -65,7 +66,7 @@ def fetch_page(album_url: str):
     # get the album page
     try:
         req = Request(album_url)
-        response = urlopen(req).read().decode("utf-8")  
+        response = urlopen(req).read().decode("utf-8")
         return response
     except Exception as e:
         # fetching failed, return an empty string
@@ -108,6 +109,15 @@ def get_songs(album_url: str, parse_fun: object):
                 track_artist = page_artist
 
         track_title = d["title"]
+
+        # handle the case where the song is not playable
+        # (skip it if it has no file link)
+        if d["file"] is None:
+            print(
+                f"WARNING: song '{track_title}' is not available for playing. Skipping it!"
+            )
+            continue
+
         track_url = d["file"]["mp3-128"]
 
         songs.append(Song(track_artist, track_title, album, track_url))
