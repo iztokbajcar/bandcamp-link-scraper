@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HttpException
 from get_songs import get_songs, Song
 import os
 import requests
@@ -66,9 +66,10 @@ async def songs_annotated(url: str):
 
 
 @app.get("/download/")
-async def download(
-    url: str, directory: str = "/tmp", playlist_song_directory: str = "/music"
-):
+async def download(url: str, directory, playlist_song_directory):
+    if not os.path.exists(directory):
+        raise HttpException(status_code=404, detail="Directory not found")
+
     data = get_songs(url)
     local_songs = download_songs(data["songs"], directory, playlist_song_directory)
     playlist = parse_to_m3u8(local_songs)
@@ -76,9 +77,10 @@ async def download(
 
 
 @app.post("/bulk_download/")
-async def bulk_download(
-    urls: list[str], directory: str = "/tmp", playlist_song_directory: str = "/music"
-):
+async def bulk_download(urls: list[str], directory: str, playlist_song_directory: str):
+    if not os.path.exists(directory):
+        raise HttpException(status_code=404, detail="Directory not found")
+
     songs = []
     for url in urls:
         data = get_songs(url)
