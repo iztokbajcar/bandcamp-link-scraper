@@ -33,7 +33,11 @@ def download_songs(
     having the prefix defined in playlist_song_directory instead of the real download directory."""
 
     for song in songs:
-        filename = os.path.join(real_directory, f"{song.artist} - {song.title}.mp3")
+        escaped_artist = song.artist.replace("/", "_")
+        escaped_title = song.title.replace("/", "_")
+        filename = os.path.join(
+            real_directory, f"{escaped_artist} - {escaped_title}.mp3"
+        )
 
         # download song if it doesn't exist
         if not os.path.exists(filename):
@@ -44,7 +48,7 @@ def download_songs(
             print(f"Song {song.artist} - {song.title} already downloaded")
         # change song url to local path
         filename_in_playlist = os.path.join(
-            playlist_song_directory, f"{song.artist} - {song.title}.mp3"
+            playlist_song_directory, f"{escaped_artist} - {escaped_title}.mp3"
         )
         song.url = filename_in_playlist
 
