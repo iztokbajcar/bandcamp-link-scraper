@@ -12,8 +12,10 @@ class AlbumDataParser(HTMLParser):
         self.passed_album_by = False
         self.reading_title = False
         self.reading_artist = False
+        self.reading_album_art_div = False
         self.title = None
         self.artist = None
+        self.album_art_url = None
 
     def handle_starttag(self, tag, attrs):
         if tag == "script":
@@ -33,6 +35,18 @@ class AlbumDataParser(HTMLParser):
         if tag == "a" and self.artist is None and self.passed_h3:
             if self.passed_album_by:
                 self.reading_artist = True
+
+        if tag == "div" and self.album_art_url is None:
+            for attr, value in attrs:
+                if attr == "id" and value == "tralbumArt":
+                    self.reading_album_art = True
+
+        if tag == "img" and self.reading_album_art_div and self.album_art_url is None:
+            for attr, value in attrs:
+                if attr == "src":
+                    self.album_art_url = value
+                    self.reading_album_art_div = False
+                    break
 
     def handle_data(self, data):
         if self.reading_title:
@@ -75,7 +89,7 @@ def fetch_page(album_url: str):
         return ""
 
 
-def get_songs(album_url: str, parse_fun: object):
+def get_songs(album_url: str):
     response = fetch_page(album_url)
 
     # if the fetching failed, return an empty string
@@ -124,8 +138,8 @@ def get_songs(album_url: str, parse_fun: object):
 
         songs.append(Song(track_artist, track_title, album, track_url, track_duration))
 
-    album_playlist = parse_fun(songs)
-    return f"{album_playlist}\n"
+    # album_playlist = parse_fun(songs)
+    return {"art": parser.album_art_url, "songs": songs}
 
 
 if __name__ == "__main__":

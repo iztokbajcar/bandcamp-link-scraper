@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from get_songs import get_songs, Song
+import os
+import requests
 import uvicorn
 
 app = FastAPI()
@@ -22,16 +24,68 @@ def parse_to_annotated_m3u8(songs: list[Song]):
     return "\n".join(annotated)
 
 
+def download_songs(
+    songs: list[Song],
+    real_directory: str = "/tmp",
+    playlist_song_directory: str = "/music",
+) -> list[Song]:
+    """Downloads all songs into the specified directory and returns a playlist containing the downloaded files, with links in the playlist
+    having the prefix defined in playlist_song_directory instead of the real download directory."""
+
+    for song in songs:
+        filename = os.path.join(real_directory, f"{song.artist} - {song.title}.mp3")
+
+        # download song if it doesn't exist
+        if not os.path.exists(filename):
+            req = requests.get(song.url, allow_redirects=True)
+            with open(filename, "wb") as f:
+                f.write(req.content)
+        else:
+            print(f"Song {song.artist} - {song.title} already downloaded")
+        # change song url to local path
+        filename_in_playlist = os.path.join(
+            playlist_song_directory, f"{song.artist} - {song.title}.mp3"
+        )
+        song.url = filename_in_playlist
+
+    return songs
+
+
 @app.get("/songs/")
 async def songs(url: str):
-    playlist = get_songs(url, parse_to_m3u8)
-    return {"m3u8": playlist}
+    data = get_songs(url)
+    playlist = parse_to_m3u8(data["songs"])
+    return {"art_url": data["art"], "m3u8": playlist}
 
 
 @app.get("/songs_annotated/")
 async def songs_annotated(url: str):
-    playlist = get_songs(url, parse_to_annotated_m3u8)
-    return {"m3u8": playlist}
+    data = get_songs(url)
+    playlist = parse_to_annotated_m3u8(data["songs"])
+    return {"art_url": data["art"], "m3u8": playlist}
+
+
+@app.get("/download/")
+async def download(
+    url: str, directory: str = "/tmp", playlist_song_directory: str = "/music"
+):
+    data = get_songs(url)
+    local_songs = download_songs(data["songs"], directory, playlist_song_directory)
+    playlist = parse_to_m3u8(local_songs)
+    return {"art_url": data["art"], "m3u8": playlist}
+
+
+@app.post("/bulk_download/")
+async def bulk_download(
+    urls: list[str], directory: str = "/tmp", playlist_song_directory: str = "/music"
+):
+    songs = []
+    for url in urls:
+        data = get_songs(url)
+        local_songs = download_songs(data["songs"], directory, playlist_song_directory)
+        songs.extend(local_songs)
+    playlist = parse_to_m3u8(songs)
+    return {"art_url": data["art"], "m3u8": playlist}
 
 
 if __name__ == "__main__":
