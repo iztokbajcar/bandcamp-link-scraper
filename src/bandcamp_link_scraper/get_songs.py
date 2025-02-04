@@ -2,7 +2,8 @@ from html.parser import HTMLParser
 import json
 import mutagen
 from mutagen.easyid3 import EasyID3
-from mutagen.id3 import ID3NoHeaderError
+from mutagen.id3 import APIC, ID3, ID3NoHeaderError
+from mutagen.mp3 import MP3
 import os
 import requests
 import sys
@@ -37,18 +38,19 @@ class AlbumDataParser(HTMLParser):
         if tag == "h3" and self.artist is None:
             self.passed_h3 = True
 
-        if tag == "a" and self.artist is None and self.passed_h3:
-            if self.passed_album_by:
-                self.reading_artist = True
+        if tag == "a":
+            if self.artist is None and self.passed_h3:
+                if self.passed_album_by:
+                    self.reading_artist = True
 
         if tag == "div" and self.album_art_url is None:
             for attr, value in attrs:
                 if attr == "id" and value == "tralbumArt":
-                    self.reading_album_art = True
+                    self.reading_album_art_div = True
 
-        if tag == "img" and self.reading_album_art_div and self.album_art_url is None:
+        if tag == "a" and self.reading_album_art_div and self.album_art_url is None:
             for attr, value in attrs:
-                if attr == "src":
+                if attr == "href":
                     self.album_art_url = value
                     self.reading_album_art_div = False
                     break
@@ -70,10 +72,19 @@ class AlbumDataParser(HTMLParser):
 
 
 class Song:
-    def __init__(self, artist: str, title: str, album: str, url: str, duration: float):
+    def __init__(
+        self,
+        artist: str,
+        title: str,
+        album: str,
+        album_art_url: str,
+        url: str,
+        duration: float,
+    ):
         self.artist = artist
         self.title = title
         self.album = album
+        self.album_art_url = album_art_url
         self.url = url
         self.duration = duration
         print(f"song: {self.artist}, {self.title} | {self.album}")
@@ -140,11 +151,21 @@ def get_songs(album_url: str):
             continue
 
         track_url = d["file"]["mp3-128"]
+        album_art_url = parser.album_art_url
 
-        songs.append(Song(track_artist, track_title, album, track_url, track_duration))
+        songs.append(
+            Song(
+                track_artist,
+                track_title,
+                album,
+                album_art_url,
+                track_url,
+                track_duration,
+            )
+        )
 
     # album_playlist = parse_fun(songs)
-    return {"art": parser.album_art_url, "songs": songs}
+    return {"art": album_art_url, "songs": songs}
 
 
 def download_songs(
@@ -180,7 +201,37 @@ def download_songs(
                 mp3["artist"] = song.artist
                 mp3["album"] = song.album
                 mp3["title"] = song.title
-                mp3.save(filename, v1=2)
+                mp3.save(filename, v2_version=3)
+
+                # add album art
+                if song.album_art_url is not None:
+                    art_filename = os.path.join(
+                        "/tmp", song.album_art_url.split("/")[-1]
+                    )
+
+                    art_contents = None
+
+                    req = requests.get(song.album_art_url, allow_redirects=True)
+                    if not os.path.exists(art_filename):
+                        with open(art_filename, "wb") as f:
+                            f.write(req.content)
+                        art_contents = req.content
+                    else:
+                        with open(art_filename, "rb") as f:
+                            art_contents = f.read()
+
+                    mp3 = MP3(filename, ID3=ID3)
+                    mp3.tags.add(
+                        APIC(
+                            encoding=3,
+                            mime="image/jpeg",
+                            type=3,
+                            desc="Cover",
+                            data=art_contents,
+                        )
+                    )
+                    mp3.save(filename, v2_version=3)
+
             print(f"Downloaded song '{song.artist} - {song.title}'")
         else:
             print(f"Song '{song.artist} - {song.title}' already downloaded")
