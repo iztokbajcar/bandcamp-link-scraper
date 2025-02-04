@@ -1,5 +1,10 @@
 from html.parser import HTMLParser
 import json
+import mutagen
+from mutagen.easyid3 import EasyID3
+from mutagen.id3 import ID3NoHeaderError
+import os
+import requests
 import sys
 from urllib.request import Request, urlopen
 
@@ -140,6 +145,50 @@ def get_songs(album_url: str):
 
     # album_playlist = parse_fun(songs)
     return {"art": parser.album_art_url, "songs": songs}
+
+
+def download_songs(
+    songs: list[Song],
+    real_directory: str = "/tmp",
+    playlist_song_directory: str = "/music",
+) -> list[Song]:
+    """Downloads all songs into the specified directory and returns a playlist containing the downloaded files, with links in the playlist
+    having the prefix defined in playlist_song_directory instead of the real download directory."""
+
+    for song in songs:
+        escaped_artist = song.artist.replace("/", "_")
+        escaped_title = song.title.replace("/", "_")
+        filename = os.path.join(
+            real_directory, f"{escaped_artist} - {escaped_title}.mp3"
+        )
+
+        # download song if it doesn't exist
+        if not os.path.exists(filename):
+            req = requests.get(song.url, allow_redirects=True)
+            with open(filename, "wb") as f:
+                f.write(req.content)
+
+                # set song metadata
+                mp3 = None
+                try:
+                    mp3 = EasyID3(filename)
+                except ID3NoHeaderError:
+                    mp3 = mutagen.File(filename, easy=True)
+                    mp3.add_tags()
+
+                mp3["artist"] = song.artist
+                mp3["album"] = song.album
+                mp3["title"] = song.title
+                mp3.save(filename, v1=2)
+        else:
+            print(f"Song '{song.artist} - {song.title}' already downloaded")
+        # change song url to local path
+        filename_in_playlist = os.path.join(
+            playlist_song_directory, f"{escaped_artist} - {escaped_title}.mp3"
+        )
+        song.url = filename_in_playlist
+
+    return songs
 
 
 if __name__ == "__main__":
