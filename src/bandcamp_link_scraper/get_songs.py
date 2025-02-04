@@ -151,6 +151,7 @@ def download_songs(
     songs: list[Song],
     real_directory: str = "/tmp",
     playlist_song_directory: str = "/music",
+    force: bool = False,
 ) -> list[Song]:
     """Downloads all songs into the specified directory and returns a playlist containing the downloaded files, with links in the playlist
     having the prefix defined in playlist_song_directory instead of the real download directory."""
@@ -163,7 +164,7 @@ def download_songs(
         )
 
         # download song if it doesn't exist
-        if not os.path.exists(filename):
+        if not os.path.exists(filename) or force:
             req = requests.get(song.url, allow_redirects=True)
             with open(filename, "wb") as f:
                 f.write(req.content)
@@ -180,6 +181,7 @@ def download_songs(
                 mp3["album"] = song.album
                 mp3["title"] = song.title
                 mp3.save(filename, v1=2)
+            print(f"Downloaded song '{song.artist} - {song.title}'")
         else:
             print(f"Song '{song.artist} - {song.title}' already downloaded")
         # change song url to local path
