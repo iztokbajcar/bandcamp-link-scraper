@@ -74,6 +74,7 @@ class AlbumDataParser(HTMLParser):
 class Song:
     def __init__(
         self,
+        num: int,
         artist: str,
         title: str,
         album: str,
@@ -81,6 +82,7 @@ class Song:
         url: str,
         duration: float,
     ):
+        self.num = num
         self.artist = artist
         self.title = title
         self.album = album
@@ -141,6 +143,7 @@ def get_songs(album_url: str):
 
         track_title = d["title"]
         track_duration = d["duration"]
+        track_num = d["track_num"]
 
         # handle the case where the song is not playable
         # (skip it if it has no file link)
@@ -155,6 +158,7 @@ def get_songs(album_url: str):
 
         songs.append(
             Song(
+                track_num,
                 track_artist,
                 track_title,
                 album,
@@ -198,6 +202,7 @@ def download_songs(
                     mp3 = mutagen.File(filename, easy=True)
                     mp3.add_tags()
 
+                mp3["tracknumber"] = f"{song.num}"
                 mp3["artist"] = song.artist
                 mp3["album"] = song.album
                 mp3["title"] = song.title
