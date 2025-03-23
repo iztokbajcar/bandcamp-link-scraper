@@ -75,6 +75,7 @@ class Song:
     def __init__(
         self,
         num: int,
+        album_artist: str,
         artist: str,
         title: str,
         album: str,
@@ -83,6 +84,7 @@ class Song:
         duration: float,
     ):
         self.num = num
+        self.album_artist = album_artist
         self.artist = artist
         self.title = title
         self.album = album
@@ -133,13 +135,17 @@ def get_songs(album_url: str):
         page_artist = parser.artist
         album = parser.title
 
+    # if the album artist was not specified in the album metadata,
+    # use the artist read from the page
+    if album_artist is None:
+        album_artist = page_artist
+
+    print(f"Album artist: {album_artist}")
+
     for d in parser.data["trackinfo"]:
         track_artist = d["artist"]
         if track_artist is None:
-            if album_artist is not None:
-                track_artist = album_artist
-            else:
-                track_artist = page_artist
+            track_artist = album_artist
 
         track_title = d["title"]
         track_duration = d["duration"]
@@ -159,6 +165,7 @@ def get_songs(album_url: str):
         songs.append(
             Song(
                 track_num,
+                album_artist,
                 track_artist,
                 track_title,
                 album,
@@ -202,7 +209,9 @@ def download_songs(
                     mp3 = mutagen.File(filename, easy=True)
                     mp3.add_tags()
 
+                print(song.album_artist)
                 mp3["tracknumber"] = f"{song.num}"
+                mp3["albumartist"] = song.album_artist
                 mp3["artist"] = song.artist
                 mp3["album"] = song.album
                 mp3["title"] = song.title
