@@ -2,7 +2,7 @@ from html.parser import HTMLParser
 import json
 import mutagen
 from mutagen.easyid3 import EasyID3
-from mutagen.id3 import APIC, ID3, ID3NoHeaderError
+from mutagen.id3 import APIC, COMM, ID3, Encoding, ID3NoHeaderError
 from mutagen.mp3 import MP3
 import os
 import requests
@@ -19,9 +19,11 @@ class AlbumDataParser(HTMLParser):
         self.reading_title = False
         self.reading_artist = False
         self.reading_album_art_div = False
+        self.reading_tag = False
         self.title = None
         self.artist = None
         self.album_art_url = None
+        self.tags = None
 
     def handle_starttag(self, tag, attrs):
         if tag == "script":
@@ -54,6 +56,11 @@ class AlbumDataParser(HTMLParser):
                     self.album_art_url = value
                     self.reading_album_art_div = False
                     break
+        
+        if tag == "a":
+            for attr, value in attrs:
+                if attr == "class" and value == "tag":
+                    self.reading_tag = True
 
     def handle_data(self, data):
         if self.reading_title:
@@ -70,6 +77,13 @@ class AlbumDataParser(HTMLParser):
             print(f"'{self.artist}'")
             self.reading_artist = False
 
+        if self.reading_tag:
+            if self.tags is None:
+                self.tags = []
+
+            self.tags.append(data.strip())
+            print(f"tag: '{data.strip()}'")
+            self.reading_tag = False
 
 class Song:
     def __init__(
@@ -82,6 +96,7 @@ class Song:
         album_art_url: str,
         url: str,
         duration: float,
+        tags: list[str]
     ):
         self.num = num
         self.album_artist = album_artist
@@ -91,6 +106,7 @@ class Song:
         self.album_art_url = album_art_url
         self.url = url
         self.duration = duration
+        self.tags = tags
         print(f"song: {self.artist}, {self.title} | {self.album}")
 
     def __str__(self):
@@ -161,6 +177,7 @@ def get_songs(album_url: str):
 
         track_url = d["file"]["mp3-128"]
         album_art_url = parser.album_art_url
+        tags = parser.tags if parser.tags else []
 
         songs.append(
             Song(
@@ -172,6 +189,7 @@ def get_songs(album_url: str):
                 album_art_url,
                 track_url,
                 track_duration,
+                tags
             )
         )
 
@@ -242,6 +260,16 @@ def download_songs(
                             type=3,
                             desc="Cover",
                             data=art_contents,
+                        )
+                    )
+
+                    # add the song's bandcamp tags into the comment tag
+                    mp3.tags.add(
+                        COMM(
+                            encoding=Encoding.UTF8,
+                            lang="eng",
+                            desc="Bandcamp Tags",
+                            text=",".join(song.tags),
                         )
                     )
                     mp3.save(filename, v2_version=3)
