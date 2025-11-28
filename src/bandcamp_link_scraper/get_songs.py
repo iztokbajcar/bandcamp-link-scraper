@@ -257,6 +257,11 @@ def download_songs(
 
                     mp3 = MP3(filename, ID3=ID3)
 
+                    # sometimes the first song in the album has some tags
+                    # already present, which may confuse music players into
+                    # thinking that it belongs into a separate album;
+                    # to avoid this, we clear some existing tags first
+
                     # delete the cover art if it exists
                     try:
                         mp3.tags.delall("APIC")
@@ -266,6 +271,12 @@ def download_songs(
                     # delete comments if they exist
                     try:
                         mp3.tags.delall("COMM")
+                    except Exception:
+                        pass
+
+                    # delete the TDRC tag
+                    try:
+                        mp3.tags.delall("TDRC")
                     except Exception:
                         pass
 
