@@ -56,7 +56,7 @@ class AlbumDataParser(HTMLParser):
                     self.album_art_url = value
                     self.reading_album_art_div = False
                     break
-        
+
         if tag == "a":
             for attr, value in attrs:
                 if attr == "class" and value == "tag":
@@ -65,7 +65,7 @@ class AlbumDataParser(HTMLParser):
     def handle_data(self, data):
         if self.reading_title:
             self.title = data.strip()
-            print(f"'{self.title}'")
+            print(f"title: '{self.title}'")
             self.reading_title = False
 
         if self.passed_h3 and self.artist is None and not self.passed_album_by:
@@ -74,7 +74,7 @@ class AlbumDataParser(HTMLParser):
 
         if self.reading_artist:
             self.artist = data.strip()
-            print(f"'{self.artist}'")
+            print(f"artist: '{self.artist}'")
             self.reading_artist = False
 
         if self.reading_tag:
@@ -84,6 +84,7 @@ class AlbumDataParser(HTMLParser):
             self.tags.append(data.strip())
             print(f"tag: '{data.strip()}'")
             self.reading_tag = False
+
 
 class Song:
     def __init__(
@@ -96,7 +97,7 @@ class Song:
         album_art_url: str,
         url: str,
         duration: float,
-        tags: list[str]
+        tags: list[str],
     ):
         self.num = num
         self.album_artist = album_artist
@@ -107,7 +108,9 @@ class Song:
         self.url = url
         self.duration = duration
         self.tags = tags
-        print(f"song: {self.artist}, {self.title} | {self.album}")
+        print(
+            f"song: {self.artist}, {self.title} | {self.album} (tags: {','.join(tags)})"
+        )
 
     def __str__(self):
         return f"# {self.artist} - {self.title}\n{self.url}"
@@ -189,7 +192,7 @@ def get_songs(album_url: str):
                 album_art_url,
                 track_url,
                 track_duration,
-                tags
+                tags,
             )
         )
 
@@ -253,6 +256,20 @@ def download_songs(
                             art_contents = f.read()
 
                     mp3 = MP3(filename, ID3=ID3)
+
+                    # delete the cover art if it exists
+                    try:
+                        mp3.tags.delall("APIC")
+                    except Exception:
+                        pass
+
+                    # delete comments if they exist
+                    try:
+                        mp3.tags.delall("COMM")
+                    except Exception:
+                        pass
+
+                    # add cover art
                     mp3.tags.add(
                         APIC(
                             encoding=3,
