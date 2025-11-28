@@ -2,7 +2,7 @@ from html.parser import HTMLParser
 import json
 import mutagen
 from mutagen.easyid3 import EasyID3
-from mutagen.id3 import APIC, COMM, ID3, Encoding, ID3NoHeaderError
+from mutagen.id3 import APIC, COMM, ID3, TORY, Encoding, ID3NoHeaderError
 from mutagen.mp3 import MP3
 import os
 import requests
@@ -20,10 +20,12 @@ class AlbumDataParser(HTMLParser):
         self.reading_artist = False
         self.reading_album_art_div = False
         self.reading_tag = False
+        self.reading_year = False
         self.title = None
         self.artist = None
         self.album_art_url = None
         self.tags = None
+        self.year = None
 
     def handle_starttag(self, tag, attrs):
         if tag == "script":
@@ -62,6 +64,11 @@ class AlbumDataParser(HTMLParser):
                 if attr == "class" and value == "tag":
                     self.reading_tag = True
 
+        if tag == "div" and self.year is None:
+            for attr, value in attrs:
+                if attr == "class" and "tralbum-credits" in value:
+                    self.reading_year = True
+
     def handle_data(self, data):
         if self.reading_title:
             self.title = data.strip()
@@ -85,6 +92,14 @@ class AlbumDataParser(HTMLParser):
             print(f"tag: '{data.strip()}'")
             self.reading_tag = False
 
+        if self.reading_year:
+            data = data.strip()
+
+            year = data.split(" ")[-1]
+            print(f"year: {year}")
+            self.year = year
+            self.reading_year = False
+
 
 class Song:
     def __init__(
@@ -98,6 +113,7 @@ class Song:
         url: str,
         duration: float,
         tags: list[str],
+        year: int,
     ):
         self.num = num
         self.album_artist = album_artist
@@ -108,8 +124,9 @@ class Song:
         self.url = url
         self.duration = duration
         self.tags = tags
+        self.year = year
         print(
-            f"song: {self.artist}, {self.title} | {self.album} (tags: {','.join(tags)})"
+            f"song: {self.artist}, {self.title} | {self.album} ({self.year}) (tags: {','.join(tags)})"
         )
 
     def __str__(self):
@@ -154,6 +171,8 @@ def get_songs(album_url: str):
         page_artist = parser.artist
         album = parser.title
 
+    year = parser.year
+
     # if the album artist was not specified in the album metadata,
     # use the artist read from the page
     if album_artist is None:
@@ -193,6 +212,7 @@ def get_songs(album_url: str):
                 track_url,
                 track_duration,
                 tags,
+                year,
             )
         )
 
@@ -238,6 +258,29 @@ def download_songs(
                 mp3["title"] = song.title
                 mp3.save(filename, v2_version=3)
 
+                # sometimes the first song in the album has some tags
+                # already present, which may confuse music players into
+                # thinking that it belongs into a separate album;
+                # to avoid this, we clear some existing tags first
+
+                # delete the cover art if it exists
+                try:
+                    mp3.tags.delall("APIC")
+                except Exception:
+                    pass
+
+                # delete comments if they exist
+                try:
+                    mp3.tags.delall("COMM")
+                except Exception:
+                    pass
+
+                # delete the TDRC tag
+                try:
+                    mp3.tags.delall("TDRC")
+                except Exception:
+                    pass
+
                 # add album art
                 if song.album_art_url is not None:
                     art_filename = os.path.join(
@@ -257,29 +300,6 @@ def download_songs(
 
                     mp3 = MP3(filename, ID3=ID3)
 
-                    # sometimes the first song in the album has some tags
-                    # already present, which may confuse music players into
-                    # thinking that it belongs into a separate album;
-                    # to avoid this, we clear some existing tags first
-
-                    # delete the cover art if it exists
-                    try:
-                        mp3.tags.delall("APIC")
-                    except Exception:
-                        pass
-
-                    # delete comments if they exist
-                    try:
-                        mp3.tags.delall("COMM")
-                    except Exception:
-                        pass
-
-                    # delete the TDRC tag
-                    try:
-                        mp3.tags.delall("TDRC")
-                    except Exception:
-                        pass
-
                     # add cover art
                     mp3.tags.add(
                         APIC(
@@ -291,16 +311,25 @@ def download_songs(
                         )
                     )
 
-                    # add the song's bandcamp tags into the comment tag
-                    mp3.tags.add(
-                        COMM(
-                            encoding=Encoding.UTF8,
-                            lang="eng",
-                            desc="Bandcamp Tags",
-                            text=",".join(song.tags),
-                        )
+                # add the song's bandcamp tags into the comment tag
+                mp3.tags.add(
+                    COMM(
+                        encoding=Encoding.UTF8,
+                        lang="eng",
+                        desc="Bandcamp Tags",
+                        text=",".join(song.tags),
                     )
-                    mp3.save(filename, v2_version=3)
+                )
+
+                # add release year
+                mp3.tags.add(
+                    TORY(
+                        encoding=Encoding.UTF8,
+                        text=str(song.year),
+                    )
+                )
+
+                mp3.save(filename, v2_version=3)
 
             print(f"Downloaded song '{song.artist} - {song.title}'")
         else:
