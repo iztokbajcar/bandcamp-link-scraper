@@ -250,6 +250,12 @@ def download_songs(
                     mp3 = mutagen.File(filename, easy=True)
                     mp3.add_tags()
 
+                # sometimes the first song in the album has some tags
+                # already present, which may confuse music players into
+                # thinking that it belongs into a separate album;
+                # to avoid this, we clear existing tags first
+                mp3.delete()
+
                 print(song.album_artist)
                 mp3["tracknumber"] = f"{song.num}"
                 mp3["albumartist"] = song.album_artist
@@ -257,29 +263,6 @@ def download_songs(
                 mp3["album"] = song.album
                 mp3["title"] = song.title
                 mp3.save(filename, v2_version=3)
-
-                # sometimes the first song in the album has some tags
-                # already present, which may confuse music players into
-                # thinking that it belongs into a separate album;
-                # to avoid this, we clear some existing tags first
-
-                # delete the cover art if it exists
-                try:
-                    mp3.tags.delall("APIC")
-                except Exception:
-                    pass
-
-                # delete comments if they exist
-                try:
-                    mp3.tags.delall("COMM")
-                except Exception:
-                    pass
-
-                # delete the TDRC tag
-                try:
-                    mp3.tags.delall("TDRC")
-                except Exception:
-                    pass
 
                 # add album art
                 if song.album_art_url is not None:
