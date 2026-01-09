@@ -161,11 +161,11 @@ def get_songs(album_url: str):
 
     # deduce artist from the page title to later use it instead
     # of the artist present in tralbum if that turns out to be unavailable
-    # this is useful for albums that are published by records, where
+    # this is useful for albums that are published by record labels, where
     # the song artist metadata doesn't actually represent the real artist
     page_artist = None
     album = None
-    if " - " in parser.title:
+    if "records" in page_artist.lower() and " - " in parser.title:
         page_artist, album = parser.title.split(" - ")[:2]
     else:
         page_artist = parser.artist
