@@ -165,7 +165,11 @@ def get_songs(album_url: str):
     # the song artist metadata doesn't actually represent the real artist
     page_artist = None
     album = None
-    if "records" in album_artist.lower() and " - " in parser.title:
+    if (
+        album_artist is not None
+        and "records" in album_artist.lower()
+        and " - " in parser.title
+    ):
         page_artist, album = parser.title.split(" - ")[:2]
     else:
         page_artist = parser.artist
